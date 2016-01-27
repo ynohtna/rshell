@@ -162,7 +162,7 @@ def is_micropython_usb_device(port):
     # We don't check the last digit of the PID since there are 3 possible
     # values.
     if usb_id.startswith('usb vid:pid=f055:980'):
-        return True;
+        return True
     return False
 
 
@@ -283,8 +283,8 @@ def column_print(fmt, rows, print_func):
                                  for i in range(num_cols)]))
 
 
-def find_macthing_files(match):
-    """Finds all of the files wihch match (used for completion)."""
+def find_matching_files(match):
+    """Finds all of the files which match (used for completion)."""
     last_slash = match.rfind('/')
     if last_slash == -1:
         dirname = '.'
