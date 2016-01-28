@@ -7,7 +7,7 @@ with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name = 'rshell',
-    version = '0.0.1',
+    version = open('rshell/version.py').readlines()[-1].split()[-1].strip("\"'"),
     author = 'Dave Hylands',
     author_email = 'dhylands@gmail.com',
     description = ('A remote shell for working with MicroPython boards.'),
