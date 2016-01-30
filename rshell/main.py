@@ -13,6 +13,7 @@
 
 from rshell.getch import getch
 from rshell.pyboard import Pyboard
+import rshell.version
 
 import argparse
 import binascii
@@ -65,9 +66,13 @@ DK_WHITE = "\x1b[2;37m"
 
 NO_COLOR = "\x1b[0m"
 
-DIR_COLOR = LT_CYAN
+DIR_COLOR = LT_BLUE
 PROMPT_COLOR = LT_GREEN
-PY_COLOR = DK_GREEN
+PY_COLOR = LT_YELLOW
+INTRO_COLOR = LT_YELLOW
+INFO_COLOR = LT_MAGENTA
+ERR_COLOR = LT_RED
+DIM_COLOR = LT_BLACK
 END_COLOR = NO_COLOR
 
 cur_dir = ''
@@ -1278,9 +1283,12 @@ class Shell(cmd.Cmd):
         self.stderr = ByteWriter(sys.stderr.buffer)
         self.stdout_to_shell = self.stdout
 
-        self.filename = filename
         self.line_num = 0
         self.timing = timing
+
+        self.filename = filename
+        if self.filename:
+            self.use_rawinput = False
 
         global cur_dir
         cur_dir = os.getcwd()
@@ -1292,13 +1300,19 @@ class Shell(cmd.Cmd):
         self.redirect_filename = ''
         self.redirect_mode = ''
 
+        self.ruler = DIM_COLOR + '-' + END_COLOR
+
         self.quit_when_no_output = False
         self.quit_serial_reader = False
         readline.set_completer_delims(DELIMS)
 
-
     def set_prompt(self):
-        self.prompt = PROMPT_COLOR + cur_dir + END_COLOR + '> '
+        self.prompt = ''
+        if self.filename:
+            if DEBUG:
+                self.prompt = PROMPT_COLOR + self.filename + ': ' + END_COLOR
+        else:
+            self.prompt = PROMPT_COLOR + cur_dir + END_COLOR + '> '
 
     def cmdloop(self, line=None):
         if line:
@@ -1315,11 +1329,9 @@ class Shell(cmd.Cmd):
         2 - So we can strip comments
         3 - So we can track line numbers
         """
-        if DEBUG:
-            print('Executing "%s"' % line)
         self.line_num += 1
         if line == "EOF":
-            if cmd.Cmd.use_rawinput:
+            if self.use_rawinput:
                 # This means that we printed a prompt, and we'll want to
                 # print a newline to pretty things up for the caller.
                 self.print('')
@@ -1329,6 +1341,10 @@ class Shell(cmd.Cmd):
         if comment_idx >= 0:
             line = line[0:comment_idx]
             line = line.strip()
+        if line == '':
+            return False
+        if DEBUG:
+            print(line)
         try:
             if self.timing:
                 start_time = time.time()
@@ -1577,7 +1593,7 @@ class Shell(cmd.Cmd):
     def do_cat(self, line):
         """cat FILENAME...
 
-           Concatinates files and sends to stdout.
+           Concatenates files and sends to stdout.
         """
         # note: when we get around to supporting cat from stdin, we'll need
         #       to write stdin to a temp file, and then copy the file
@@ -1787,7 +1803,7 @@ class Shell(cmd.Cmd):
         # from the docstrings. The builtin help function doesn't do that.
         if not line:
             cmd.Cmd.do_help(self, line)
-            self.print("Use Control-D to exit rshell.")
+            self.print(INFO_COLOR + "Use Control-D to exit rshell." + END_COLOR)
             return
         parser = self.create_argparser(line)
         if parser:
@@ -1938,14 +1954,17 @@ class Shell(cmd.Cmd):
            If you want the repl to exit, end the line with the ~ character.
         """
         args = self.line_to_args(line)
+        if DEBUG:
+            print('repl executing with args: ', args)
         if len(args) > 0 and line[0] != '~':
             name = args[0]
             line = ' '.join(args[1:])
         else:
-            name = ''
+            name = None
         dev = find_device_by_name(name)
         if not dev:
-            self.print_err("Unable to find board '%s'" % name)
+            if name:
+                self.print_err("Unable to find board '%s'" % name)
             return
 
         if line[0:2] == '~ ':
@@ -2161,6 +2180,7 @@ def main():
     parser.add_argument(
         "-f", "--file",
         dest="filename",
+        action="append",
         help="Specifies a file of commands to process."
     )
     parser.add_argument(
@@ -2199,7 +2219,7 @@ def main():
         default=False
     )
     parser.add_argument(
-        "cmd",
+        "command",
         nargs=argparse.REMAINDER,
         help="Optional command to execute"
     )
@@ -2215,7 +2235,7 @@ def main():
         print("Timing = %d" % args.timing)
         print("Quiet = %d" % args.quiet)
         print("Buffer_size = %d" % args.buffer_size)
-        print("Cmd = [%s]" % ', '.join(args.cmd))
+        print("Cmd = [%s]" % ', '.join(args.command))
 
     global DEBUG
     DEBUG = args.debug
@@ -2229,10 +2249,15 @@ def main():
     BUFFER_SIZE = args.buffer_size
 
     if args.nocolor:
-        global DIR_COLOR, PROMPT_COLOR, PY_COLOR, END_COLOR
+        global DIR_COLOR, PROMPT_COLOR, PY_COLOR, INTRO_COLOR, INFO_COLOR
+        global ERR_COLOR, DIM_COLOR, END_COLOR
         DIR_COLOR = ''
         PROMPT_COLOR = ''
         PY_COLOR = ''
+        INTRO_COLOR = ''
+        INFO_COLOR = ''
+        ERR_COLOR = ''
+        DIM_COLOR = ''
         END_COLOR = ''
 
     if args.port:
@@ -2245,17 +2270,28 @@ def main():
     if sys.platform != 'darwin':
         autoconnect()
 
+    cmd_line = ' '.join(args.command)
+
     if args.filename:
-        with open(args.filename) as cmd_file:
-            shell = Shell(stdin=cmd_file, filename=args.filename, timing=args.timing)
-            shell.cmdloop('')
+        for filename in args.filename:
+            if DEBUG:
+                print('Processing contents of file', filename)
+            with open(filename, 'rt') as cmd_file:
+                shell = Shell(stdin=cmd_file, filename=filename, timing=args.timing)
+                shell.cmdloop()
+                if early_exit:
+                    sys.exit()
+        if cmd_line:
+            shell = Shell(timing=args.timing)
+            shell.cmdloop(cmd_line)
     else:
-        cmd_line = ' '.join(args.cmd)
         if cmd_line == '':
-            print('Welcome to rshell. Use Control-D to exit.')
+            print(INTRO_COLOR + 'rshell ' + rshell.version.__version__ + '.' + END_COLOR)
+            print('')
+            print(INFO_COLOR + 'Use Control-D to exit.' + END_COLOR)
         if num_devices() == 0:
             print('')
-            print('No MicroPython boards connected - use the connect command to add one')
+            print(ERR_COLOR + 'No MicroPython boards connected - use the connect command to add one' + END_COLOR)
             print('')
         shell = Shell(timing=args.timing)
         shell.cmdloop(cmd_line)
