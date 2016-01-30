@@ -153,7 +153,7 @@ def is_micropython_usb_device(port):
     if type(port).__name__ == 'Device':
         # Assume its a pyudev.device.Device
         if ('ID_BUS' not in port or port['ID_BUS'] != 'usb' or
-            'SUBSYSTEM' not in port or port['SUBSYSTEM'] != 'tty'):
+                'SUBSYSTEM' not in port or port['SUBSYSTEM'] != 'tty'):
             return False
         usb_id = 'usb vid:pid={}:{}'.format(port['ID_VENDOR_ID'], port['ID_MODEL_ID'])
     else:
@@ -203,7 +203,7 @@ def autoconnect_thread(monitor):
                 if usb_dev.action == 'add':
                     # Try connecting a few times. Sometimes the serial port
                     # reports itself as busy, which causes the connection to fail.
-                    for i in range(8):
+                    for _ in range(8):
                         if dev:
                             connected = connect_serial(dev.port, dev.baud, dev.wait)
                         elif is_micropython_usb_device(usb_dev):
@@ -230,21 +230,21 @@ def autoscan():
             connect_serial(port[0])
 
 
-def escape(str):
+def escape(string):
     """Precede all special characters with a backslash."""
     out = ''
-    for char in str:
+    for char in string:
         if char in '\\ ':
             out += '\\'
         out += char
     return out
 
 
-def unescape(str):
+def unescape(string):
     """Undoes the effects of the escape() function."""
     out = ''
     prev_backslash = False
-    for char in str:
+    for char in string:
         if not prev_backslash and char == '\\':
             prev_backslash = True
             continue
@@ -406,7 +406,6 @@ def cat(src_filename, dst_file):
 
 def chdir(dirname):
     """Changes the current working directory."""
-    import os
     os.chdir(dirname)
 
 
@@ -470,7 +469,6 @@ def eval_str(string):
 
 def get_filesize(filename):
     """Returns the size of a file, in bytes."""
-    import os
     try:
         # Since this function runs remotely, it can't depend on other functions,
         # so we can't call stat_mode.
@@ -483,7 +481,6 @@ def get_mode(filename):
     """Returns the mode of a file, which can be used to determine if a file
        exists, if a file is a file or a directory.
     """
-    import os
     try:
         # Since this function runs remotely, it can't depend on other functions,
         # so we can't call stat_mode.
@@ -496,8 +493,6 @@ def get_stat(filename):
     """Returns the stat array for a given file. Returns all 0's if the file
        doesn't exist.
     """
-    import os
-
     def stat(filename):
         rstat = os.stat(filename)
         if IS_UPY:
@@ -505,6 +500,7 @@ def get_stat(filename):
             # is relative to Jan 1, 1970.
             return rstat[:7] + tuple(tim + TIME_OFFSET for tim in rstat[7:])
         return rstat
+
     try:
         return stat(filename)
     except OSError:
@@ -513,7 +509,6 @@ def get_stat(filename):
 
 def listdir(dirname):
     """Returns a list of filenames contained in the named directory."""
-    import os
     return os.listdir(dirname)
 
 
@@ -522,7 +517,6 @@ def listdir_matches(match):
        Only filenames which start with `match` will be returned.
        Directories will have a trailing slash.
     """
-    import os
     last_slash = match.rfind('/')
     if last_slash == -1:
         dirname = '.'
@@ -550,8 +544,6 @@ def listdir_stat(dirname):
        directory. Each tuple contains the filename, followed by the tuple
        returned by calling os.stat on the filename.
     """
-    import os
-
     def stat(filename):
         rstat = os.stat(filename)
         if IS_UPY:
@@ -568,7 +560,6 @@ def listdir_stat(dirname):
 
 def make_directory(dirname):
     """Creates one or more directories."""
-    import os
     try:
         os.mkdir(dirname)
     except:
@@ -583,7 +574,6 @@ def mkdir(filename):
 
 def remove_file(filename, recursive=False, force=False):
     """Removes a file or directory."""
-    import os
     try:
         mode = os.stat(filename)[0]
         if mode & 0x4000 != 0:
@@ -625,7 +615,7 @@ def sync(src_dir, dst_dir, mirror=False, dry_run=False, print_func=None):
                 if mode_isdir(dst_mode):
                     # src and dst re both directories - recurse
                     sync(src_filename, dst_filename,
-                         mirror=mirror, dry_run=dry_run, stdout=sys.stdout)
+                         mirror=mirror, dry_run=dry_run)
                 else:
                     if print_func:
                         print_func("Source '%s' is a directory and "
@@ -669,7 +659,6 @@ def set_time(rtc_time):
 
 def recv_file_from_host(src_file, dst_filename, filesize, dst_mode='wb'):
     """Function which runs on the pyboard. Matches up with send_file_to_remote."""
-    import sys
     import ubinascii
     try:
         import pyb
@@ -775,7 +764,6 @@ def recv_file_from_remote(dev, src_filename, dst_file, filesize):
 
 def send_file_to_host(src_filename, dst_file, filesize):
     """Function which runs on the pyboard. Matches up with recv_file_from_remote."""
-    import sys
     import ubinascii
     try:
         with open(src_filename, 'rb') as src_file:
@@ -807,7 +795,6 @@ def send_file_to_host(src_filename, dst_file, filesize):
 
 def test_buffer():
     """Checks the micropython firmware to see if sys.stdin.buffer exists."""
-    import sys
     try:
         _ = sys.stdin.buffer
         return True
@@ -817,7 +804,6 @@ def test_buffer():
 
 def test_readinto():
     """Checks the micropython firmware to see if sys.stdin.readinto exists."""
-    import sys
     try:
         _ = sys.stdin.readinto
         return True
