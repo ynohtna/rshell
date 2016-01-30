@@ -78,6 +78,8 @@ DEBUG = False
 BUFFER_SIZE = 512
 QUIET = False
 
+early_exit = False
+
 SIX_MONTHS = 183 * 24 * 60 * 60
 
 QUIT_REPL_CHAR = 'X'
@@ -1799,6 +1801,15 @@ class Shell(cmd.Cmd):
         except AttributeError:
             pass
         self.print(str(self.nohelp % (line,)))
+
+    def do_exit(self, line):
+        """exits rshell
+        """
+        if DEBUG:
+            self.print('Okay, bye!')
+        global early_exit
+        early_exit = True
+        return True
 
     argparse_ls = (
         add_arg(
