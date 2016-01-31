@@ -1337,11 +1337,15 @@ class Shell(cmd.Cmd):
                 self.print('')
             return True
         # Strip comments
+        line = line.strip()
         comment_idx = line.find("#")
         if comment_idx >= 0:
             line = line[0:comment_idx]
             line = line.strip()
         if line == '':
+            # No commands left on line after comment strip: print a newline
+            # to ensure subsequent commands get a fresh prompt.
+            print('')
             return False
         if DEBUG:
             print(line)
@@ -1370,7 +1374,6 @@ class Shell(cmd.Cmd):
     def emptyline(self):
         """We want empty lines to do nothing. By default they would repeat the
         previous command.
-
         """
         pass
 
@@ -1405,7 +1408,8 @@ class Shell(cmd.Cmd):
     def print_err(self, *args, end='\n'):
         """Similar to print, but prints to stderr.
         """
-        self.print(*args, end=end, file=self.stderr)
+        err = ' '.join(str(arg) for arg in args)
+        self.print(ERR_COLOR + err + END_COLOR, end=end, file=self.stderr)
 
     def create_argparser(self, command):
         try:
@@ -1963,8 +1967,7 @@ class Shell(cmd.Cmd):
             name = None
         dev = find_device_by_name(name)
         if not dev:
-            if name:
-                self.print_err("Unable to find board '%s'" % name)
+            self.print_err("Unable to find board '%s'" % name)
             return
 
         if line[0:2] == '~ ':
@@ -2275,7 +2278,7 @@ def main():
     if args.filename:
         for filename in args.filename:
             if DEBUG:
-                print('Processing contents of file', filename)
+                print(INFO_COLOR + '\nProcessing ' + filename + END_COLOR)
             with open(filename, 'rt') as cmd_file:
                 shell = Shell(stdin=cmd_file, filename=filename, timing=args.timing)
                 shell.cmdloop()
