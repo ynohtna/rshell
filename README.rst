@@ -152,6 +152,8 @@ be used.
 
 Specifies a file of rshell commands to process. This allows you to
 create a script which executes any valid rshell commands.
+This option can be specified multiple times on the command line;
+each file will be processed in sequence.
 
 -n, --nocolor
 -------------
@@ -324,6 +326,17 @@ The editor which is used defaults to vi, but can be overridem using
 either the --editor command line option when rshell.py is invoked, or by
 using the RSHELL\_EDITOR, VISUAL or EDITOR environment variables (they
 are tried in the order listed).
+
+exit
+----
+
+::
+
+   exit
+
+Exits rshell completely. Stops processing of subsequent files when
+executed from a file specified with the command line --file option.
+
 
 filesize
 --------
